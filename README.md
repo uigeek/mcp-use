@@ -385,24 +385,10 @@ const agent = new MCPAgent({
 <table>
 <tr>
     <td align="center" style="word-wrap: break-word; width: 150.0; height: 150.0">
-        <a href=https://github.com/pietrozullo>
-            <img src=https://avatars.githubusercontent.com/u/62951181?v=4 width="100;"  style="border-radius:50%;align-items:center;justify-content:center;overflow:hidden;padding-top:10px" alt=Pietro Zullo/>
+        <a href=https://github.com/chethankumar2>
+            <img src=https://avatars.githubusercontent.com/u/104574882?v=4 width="100;"  style="border-radius:50%;align-items:center;justify-content:center;overflow:hidden;padding-top:10px" alt=chethankumar2/>
             <br />
-            <sub style="font-size:14px"><b>Pietro Zullo</b></sub>
-        </a>
-    </td>
-    <td align="center" style="word-wrap: break-word; width: 150.0; height: 150.0">
-        <a href=https://github.com/zandko>
-            <img src=https://avatars.githubusercontent.com/u/37948383?v=4 width="100;"  style="border-radius:50%;align-items:center;justify-content:center;overflow:hidden;padding-top:10px" alt=Zane/>
-            <br />
-            <sub style="font-size:14px"><b>Zane</b></sub>
-        </a>
-    </td>
-    <td align="center" style="word-wrap: break-word; width: 150.0; height: 150.0">
-        <a href=https://github.com/Pederzh>
-            <img src=https://avatars.githubusercontent.com/u/11487621?v=4 width="100;"  style="border-radius:50%;align-items:center;justify-content:center;overflow:hidden;padding-top:10px" alt=Luigi Pederzani/>
-            <br />
-            <sub style="font-size:14px"><b>Luigi Pederzani</b></sub>
+            <sub style="font-size:14px"><b>chethankumar2</b></sub>
         </a>
     </td>
 </tr>
