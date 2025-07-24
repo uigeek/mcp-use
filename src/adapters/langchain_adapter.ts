@@ -9,16 +9,16 @@ import type {
 import type { ZodTypeAny } from 'zod'
 import type { BaseConnector } from '../connectors/base.js'
 
-import { jsonSchemaToZod } from 'json-schema-to-zod'
 import { DynamicStructuredTool } from '@langchain/core/tools'
+import { jsonSchemaToZod } from 'json-schema-to-zod'
 import { z } from 'zod'
 import { logger } from '../logging.js'
 import { BaseAdapter } from './base.js'
 
 function schemaToZod(schema: any): any {
   try {
-    const parsedSchema = typeof schema === 'string' ? JSON.parse(schema) : schema;
-    return jsonSchemaToZod(parsedSchema);
+    const parsedSchema = typeof schema === 'string' ? JSON.parse(schema) : schema
+    return jsonSchemaToZod(parsedSchema)
   }
   catch (err) {
     logger.warn(`Failed to convert JSON schema to Zod: ${err}`)
