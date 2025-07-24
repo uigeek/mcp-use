@@ -7,23 +7,22 @@ import type {
   TextContent,
 } from '@modelcontextprotocol/sdk/types.js'
 import type { ZodTypeAny } from 'zod'
+import { resolveRefs } from "json-refs";
+import { format } from "prettier";
 import type { BaseConnector } from '../connectors/base.js'
 
-import { DynamicStructuredTool } from '@langchain/core/tools'
 import { jsonSchemaToZod } from 'json-schema-to-zod'
+import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 import { logger } from '../logging.js'
 import { BaseAdapter } from './base.js'
 
-function schemaToZod(schema: any): any {
-  try {
-    const parsedSchema = typeof schema === 'string' ? JSON.parse(schema) : schema
-    return jsonSchemaToZod(parsedSchema)
-  }
-  catch (err) {
-    logger.warn(`Failed to convert JSON schema to Zod: ${err}`)
-    return z.any()
-  }
+async function schemaToZod(jsonSchema: Record<string, unknown>): Promise<string> {
+  const { resolved } = await resolveRefs(jsonSchema);
+  const code = jsonSchemaToZod(resolved);
+  const formatted = await format(code, { parser: "typescript" });
+
+  return formatted;
 }
 
 function parseMcpToolResult(toolResult: CallToolResult): string {
@@ -87,7 +86,7 @@ export class LangChainAdapter extends BaseAdapter<StructuredToolInterface> {
     }
 
     // Derive a strict Zod schema for the tool's arguments.
-    const argsSchema: ZodTypeAny = mcpTool.inputSchema
+    const argsSchema: any = mcpTool.inputSchema
       ? schemaToZod(mcpTool.inputSchema)
       : z.object({}).optional()
 
