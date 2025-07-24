@@ -1,4 +1,5 @@
 import type { StructuredToolInterface } from '@langchain/core/tools'
+import { Buffer } from 'buffer'
 import type {
   CallToolResult,
   EmbeddedResource,
@@ -10,49 +11,28 @@ import type { ZodTypeAny } from 'zod'
 import type { BaseConnector } from '../connectors/base.js'
 
 import { DynamicStructuredTool } from '@langchain/core/tools'
+import { parseSchema } from 'json-schema-to-zod'
 import { z } from 'zod'
 import { logger } from '../logging.js'
 import { BaseAdapter } from './base.js'
 
-function convertJsonSchemaToZod(schema: any): ZodTypeAny {
-  switch (schema.type) {
-    case 'string':
-      return z.string();
-
-    case 'number':
-      return z.number();
-
-    case 'boolean':
-      return z.boolean();
-
-    case 'object': {
-      const shape: any = {};
-      for (const key in schema.properties) {
-        shape[key] = convertJsonSchemaToZod(schema.properties[key]);
-      }
-      return z.object(shape);
-    }
-
-    case 'array': {
-      return z.array(convertJsonSchemaToZod(schema.items));
-    }
-
-    default:
-      return z.any();
-  }
-}
-
-
-function schemaToZod(schema: unknown): ZodTypeAny {
+// Converts JSON Schema to Zod using new library
+function schemaToZod(schema: any): ZodTypeAny {
   try {
-    return convertJsonSchemaToZod(schema)
+    const result: any = parseSchema(schema)
+    if (!result.success) {
+      logger.warn(`Failed to convert JSON schema to Zod: ${result.error.message}`)
+      return z.any()
+    }
+    return result.schema
   }
   catch (err) {
-    logger.warn(`Failed to convert JSON schema to Zod: ${err}`)
+    logger.warn(`Error during JSON schema to Zod conversion: ${err}`)
     return z.any()
   }
 }
 
+// Parses the result from MCP tool into string output
 function parseMcpToolResult(toolResult: CallToolResult): string {
   if (toolResult.isError) {
     throw new Error(`Tool execution failed: ${toolResult.content}`)
@@ -64,23 +44,19 @@ function parseMcpToolResult(toolResult: CallToolResult): string {
   let decoded = ''
   for (const item of toolResult.content) {
     switch (item.type) {
-      case 'text': {
+      case 'text':
         decoded += (item as TextContent).text
         break
-      }
-      case 'image': {
+      case 'image':
         decoded += (item as ImageContent).data
         break
-      }
       case 'resource': {
         const res = (item as EmbeddedResource).resource
         if (res?.text !== undefined) {
           decoded += res.text
         }
         else if (res?.blob !== undefined) {
-          // eslint-disable-next-line node/prefer-global/buffer
           decoded += res.blob instanceof Uint8Array || res.blob instanceof Buffer
-            // eslint-disable-next-line node/prefer-global/buffer
             ? Buffer.from(res.blob).toString('base64')
             : String(res.blob)
         }
@@ -93,9 +69,11 @@ function parseMcpToolResult(toolResult: CallToolResult): string {
         throw new Error(`Unexpected content type: ${(item as any).type}`)
     }
   }
+
   return decoded
 }
 
+// LangChain adapter class
 export class LangChainAdapter extends BaseAdapter<StructuredToolInterface> {
   constructor(disallowedTools: string[] = []) {
     super(disallowedTools)
@@ -108,22 +86,22 @@ export class LangChainAdapter extends BaseAdapter<StructuredToolInterface> {
     mcpTool: MCPTool,
     connector: BaseConnector,
   ): StructuredToolInterface | null {
-    // Filter out disallowed tools early.
+    // Skip disallowed tools
     if (this.disallowedTools.includes(mcpTool.name)) {
       return null
     }
 
-    // Derive a strict Zod schema for the tool's arguments.
+    // Convert tool input schema to Zod
     const argsSchema: ZodTypeAny = mcpTool.inputSchema
       ? schemaToZod(mcpTool.inputSchema)
       : z.object({}).optional()
 
     const tool = new DynamicStructuredTool({
       name: mcpTool.name ?? 'NO NAME',
-      description: mcpTool.description ?? '', // Blank is acceptable but discouraged.
+      description: mcpTool.description ?? '',
       schema: argsSchema,
       func: async (input: Record<string, any>): Promise<string> => {
-        logger.debug(`MCP tool \"${mcpTool.name}\" received input: ${JSON.stringify(input)}`)
+        logger.debug(`MCP tool "${mcpTool.name}" received input: ${JSON.stringify(input)}`)
         try {
           const result: CallToolResult = await connector.callTool(mcpTool.name, input)
           return parseMcpToolResult(result)
