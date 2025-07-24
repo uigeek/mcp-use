@@ -17,7 +17,8 @@ import { BaseAdapter } from './base.js'
 
 function schemaToZod(schema: any): any {
   try {
-    return jsonSchemaToZod(schema)
+    const parsedSchema = typeof schema === 'string' ? JSON.parse(schema) : schema;
+    return jsonSchemaToZod(parsedSchema);
   }
   catch (err) {
     logger.warn(`Failed to convert JSON schema to Zod: ${err}`)
