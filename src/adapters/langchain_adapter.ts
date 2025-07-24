@@ -6,22 +6,51 @@ import type {
   Tool as MCPTool,
   TextContent,
 } from '@modelcontextprotocol/sdk/types.js'
+import type { ZodTypeAny } from 'zod'
 import type { BaseConnector } from '../connectors/base.js'
-import { DynamicStructuredTool } from '@langchain/core/tools'
-import { resolveRefs } from 'json-refs'
 
-import { jsonSchemaToZod } from 'json-schema-to-zod'
-import { format } from 'prettier'
+import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 import { logger } from '../logging.js'
 import { BaseAdapter } from './base.js'
 
-async function schemaToZod(jsonSchema: Record<string, unknown>): Promise<string> {
-  const { resolved } = await resolveRefs(jsonSchema)
-  const code = jsonSchemaToZod(resolved)
-  const formatted = await format(code, { parser: 'typescript' })
+function convertJsonSchemaToZod(schema: any): ZodTypeAny {
+  switch (schema.type) {
+    case 'string':
+      return z.string();
 
-  return formatted
+    case 'number':
+      return z.number();
+
+    case 'boolean':
+      return z.boolean();
+
+    case 'object': {
+      const shape: any = {};
+      for (const key in schema.properties) {
+        shape[key] = convertJsonSchemaToZod(schema.properties[key]);
+      }
+      return z.object(shape);
+    }
+
+    case 'array': {
+      return z.array(convertJsonSchemaToZod(schema.items));
+    }
+
+    default:
+      return z.any();
+  }
+}
+
+
+function schemaToZod(schema: unknown): ZodTypeAny {
+  try {
+    return convertJsonSchemaToZod(schema)
+  }
+  catch (err) {
+    logger.warn(`Failed to convert JSON schema to Zod: ${err}`)
+    return z.any()
+  }
 }
 
 function parseMcpToolResult(toolResult: CallToolResult): string {
@@ -85,7 +114,7 @@ export class LangChainAdapter extends BaseAdapter<StructuredToolInterface> {
     }
 
     // Derive a strict Zod schema for the tool's arguments.
-    const argsSchema: any = mcpTool.inputSchema
+    const argsSchema: ZodTypeAny = mcpTool.inputSchema
       ? schemaToZod(mcpTool.inputSchema)
       : z.object({}).optional()
 
